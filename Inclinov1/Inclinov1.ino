@@ -22,7 +22,7 @@ void dip_switch_task(void *parameter)
 {
   for(;;){
     dipswitch.read_dip();
-    Serial.println(dipswitch.set_degree());
+    dipswitch.set_degree();
     vTaskDelay(10 / portTICK_PERIOD_MS);
   }
 }
