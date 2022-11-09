@@ -8,36 +8,43 @@ Switch dipswitch;
 RTC myrtc;
 Gyro gyro;
 Spiffs spiffs;
+Web_server web;
 
 String payload;
 byte angle_treshold;
+unsigned long prev_mill;
 int x, y, z;
 
-void setup() {
+void setup(void) {
   Serial.begin(115200);  // put your setup code here, to run once:
   dipswitch.begin();
   myrtc.begin();
   gyro.begin();
   spiffs.begin();
+  web.begin();
 
   xTaskCreate(dip_switch_task, "dip switch task", 1024, NULL, 1, NULL);
   xTaskCreate(gyro_task, "gyro task", 2048, NULL, 1, NULL);
   xTaskCreate(spiffs_task, "spiffs task", 2048, NULL, 1, NULL);
-
-  while (1) {
-    payload = "\n============================\n" +
-              String("Angle Treshold => ") + String(angle_treshold) + " degree\n" +
-              "x:" + String(x) + "\ty:" + String(y) + "\tz:" + String(z) +
-              "\n============================\n";
-
-    Serial.println(payload);
-    //    spiffs.read_data();
-    delay(1000);
-  }
+  // xTaskCreate(server_handle_task, "server task", 8192, NULL, 1, NULL);
 }
 
-void dip_switch_task(void *parameter)
-{
+void loop(void) {
+  // put your main code here, to run repeatedly:
+  if (millis() - prev_mill >= 1000u){
+    prev_mill = millis();
+    payload = "\n==============================\n" +
+              String("Angle Tresshold: ") + String(angle_treshold) + " degree\n" +
+              "x:" + String(x) + "\ty:" + String(y) + "\tz:" + String(z) +
+              "\n==============================\n";
+
+    Serial.println(payload);
+  }
+
+  web.start();
+}
+
+void dip_switch_task(void *parameter) {
   for (;;) {
     dipswitch.read_dip();
     angle_treshold = dipswitch.set_degree();
@@ -45,8 +52,7 @@ void dip_switch_task(void *parameter)
   }
 }
 
-void gyro_task(void *parameter)
-{
+void gyro_task(void *parameter) {
   for (;;) {
     gyro.start();
     x = gyro.sudut_x();
@@ -56,16 +62,17 @@ void gyro_task(void *parameter)
   }
 }
 
-void spiffs_task(void *parameter)
-{
+void spiffs_task(void *parameter) {
   for (;;) {
-    spiffs.save_data(payload);
+    spiffs.append(payload);
     Serial.println("\nData saved to SPIFFS\n");
     delay(1000);
     vTaskDelay(3000 / portTICK_PERIOD_MS);
   }
 }
 
-void loop() {
-  // put your main code here, to run repeatedly:
+void server_handle_task(void *parameter) {
+  for (;;) {
+    web.start();
+  }
 }

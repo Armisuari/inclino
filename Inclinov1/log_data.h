@@ -4,9 +4,9 @@
 #include <SPI.h>
 #include "FS.h"
 
-bool    SPIFFS_present = false;
+bool SPIFFS_present = false;
 
-void readFile(fs::FS &fs, const char * path) {
+void readFile(fs::FS &fs, const char *path) {
   Serial.printf("Reading file: %s\r\n", path);
 
   File file = fs.open(path);
@@ -22,6 +22,22 @@ void readFile(fs::FS &fs, const char * path) {
   file.close();
 }
 
+void appendFile(fs::FS &fs, const char *path, const char *message) {
+  Serial.printf("Appending to file: %s\r\n", path);
+
+  File file = fs.open(path, FILE_APPEND);
+  if (!file) {
+    Serial.println("- failed to open file for appending");
+    return;
+  }
+  if (file.print(message)) {
+    Serial.println("- message appended");
+  } else {
+    Serial.println("- append failed");
+  }
+  file.close();
+}
+
 struct Spiffs {
   Spiffs() {}
 
@@ -29,9 +45,7 @@ struct Spiffs {
     if (!SPIFFS.begin(true)) {
       Serial.println("SPIFFS initialisation failed...");
       SPIFFS_present = false;
-    }
-    else
-    {
+    } else {
       Serial.println(F("SPIFFS initialised... file access enabled..."));
       SPIFFS_present = true;
     }
@@ -45,5 +59,9 @@ struct Spiffs {
 
   void read_data() {
     readFile(SPIFFS, "/Datalog.txt");
+  }
+
+  void append(String payload){
+    appendFile(SPIFFS, "/Datalog.txt", payload.c_str());
   }
 };
