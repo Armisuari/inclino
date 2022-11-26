@@ -49,6 +49,14 @@ struct Spiffs {
       Serial.println(F("SPIFFS initialised... file access enabled..."));
       SPIFFS_present = true;
     }
+    //////////////////
+    bool formatted = SPIFFS.format();
+    if(formatted){
+    Serial.println("\n\nSuccess formatting");
+     }else{
+    Serial.println("\n\nError formatting");
+    }
+    /////////////////
   }
 
   void save_data(String payload) {

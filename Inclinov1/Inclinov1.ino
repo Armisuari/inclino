@@ -4,10 +4,13 @@
 #include "log_data.h"
 #include "web_download.h"
 //#include "LCD.h"
+#include "indicator.h"
 #include <MPU6050_tockn.h>
 #include <Wire.h>
 #include <LiquidCrystal_I2C.h>
 #include "RTClib.h"
+
+#define relay1 25
 
 RTC_DS3231 rtc;
 char daysOfTheWeek[7][12] = {"Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"};
@@ -22,6 +25,7 @@ Switch dipswitch;
 //Gyro gyro;
 Spiffs spiffs;
 Web_server web;
+Indi indi;
 //LCD mylcd;
 
 String payload;
@@ -38,12 +42,15 @@ void setup(void) {
 //  gyro.begin();
   spiffs.begin();
   web.begin();
+  indi.begin();
 //  mylcd.begin();
   Wire.begin();
   mpu6050.begin();
   mpu6050.calcGyroOffsets(true);
   lcd.init();
   lcd.backlight();
+  pinMode (relay1,OUTPUT);
+  
 
       if (! rtc.begin()) {
   Serial.println("Couldn't find RTC");
@@ -56,10 +63,11 @@ void setup(void) {
 //  xTaskCreate(gyro_task, "gyro task", 2048, NULL, 1, NULL);
 //  xTaskCreate(rtime_task, "rtc task", 2048, NULL, 1, NULL);
   xTaskCreate(spiffs_task, "spiffs task", 2048, NULL, 1, NULL);
+//  xTaskCreate(indi_task, "inidicator task", 2048, NULL, 1, NULL);
 //  xTaskCreate(mylcd_task, "LCD task", 2048, NULL, 1, NULL);
   // xTaskCreate(server_handle_task, "server task", 8192, NULL, 1, NULL);
 
-  invert = angle_treshold - angle_treshold * 2;
+//  invert = angle_treshold - angle_treshold * 2;
 }
 
 void loop(void) {
@@ -74,28 +82,30 @@ void loop(void) {
   x=mpu6050.getAngleX();
   y=mpu6050.getAngleY();
   z=mpu6050.getAngleZ();
+  lcd.clear();
   lcd.setCursor(0,0);
   lcd.print("X:");
-  lcd.print(mpu6050.getAngleX());
+  lcd.print(int (mpu6050.getAngleX()));
   lcd.setCursor(9,0);
   lcd.print("Y:");
-  lcd.print(mpu6050.getAngleY());
+  lcd.print(int (mpu6050.getAngleY()));
   lcd.setCursor(0,1);
   lcd.print("Z:");
-  lcd.print(mpu6050.getAngleZ());
+  lcd.print(int (mpu6050.getAngleZ()));
   DateTime now = rtc.now();
   timen = String(daysOfTheWeek[now.dayOfTheWeek()]) + "," + String(now.hour(), DEC) + ":" + String(now.minute(), DEC) + ":" + String(now.second(), DEC);
   
   if (millis() - prev_mill >= 500u) {
     prev_mill = millis();
     payload = "\n==============================\n" + String("Numb: ") + count + "\n" + String("Tresshold: ") + String(angle_treshold) + " degree\n" + "x:" + String(x) + "\ty:" + String(y) + "\tz:" + String(z) + "\n" + timen + "\n" + "\n==============================\n";
-
+    
     Serial.println(payload);
+    Serial.println(angle_treshold);
     Serial.println(invert);
     Serial.println(timen);
   }
   web.start();
-
+  delay(50);
 }
 
 void dip_switch_task(void *parameter) {
@@ -119,12 +129,23 @@ void dip_switch_task(void *parameter) {
 
 void spiffs_task(void *parameter) {
   for (;;) {
+    invert = angle_treshold - angle_treshold * 2;
     if (x == (-89) || y == (-89) || z == (-89)) {
-    } else if (x >= angle_treshold || x <= invert) {
+    }else if (x >= angle_treshold ||  x <= invert) {
       count++;
       spiffs.append(payload);
+      indi.high();
       Serial.println("\nData saved to SPIFFS\n");
       delay(2000);
+      indi.low();
+    }
+    else if (y >= angle_treshold ||  y <= invert) {
+      count++;
+      spiffs.append(payload);
+      indi.high();
+      Serial.println("\nData saved to SPIFFS\n");
+      delay(2000);
+      indi.low();
     }
     vTaskDelay(1 / portTICK_PERIOD_MS);
   }
@@ -133,5 +154,11 @@ void spiffs_task(void *parameter) {
 void server_handle_task(void *parameter) {
   for (;;) {
     web.start();
+  }
+}
+
+void indi_task(void *parameter) {
+  for (;;) {
+    indi.begin();
   }
 }
