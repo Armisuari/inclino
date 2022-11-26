@@ -50,13 +50,27 @@ struct Spiffs {
       SPIFFS_present = true;
     }
     //////////////////
-    bool formatted = SPIFFS.format();
-    if(formatted){
-    Serial.println("\n\nSuccess formatting");
-     }else{
-    Serial.println("\n\nError formatting");
-    }
+//    bool formatted = SPIFFS.format();
+//    if(formatted){
+//    Serial.println("\n\nSuccess formatting");
+//     }else{
+//    Serial.println("\n\nError formatting");
+//    }
     /////////////////
+    File file = SPIFFS.open("/Datalog.txt", FILE_WRITE);
+    int sized=file.size();
+    Serial.print("file size : ");
+    Serial.println(sized);
+    if (sized==200){
+        bool formatted = SPIFFS.format();
+        if(formatted){
+        Serial.println("\n\nSuccess formatting");
+        }else{
+        Serial.println("\n\nError formatting");
+        }
+    }
+    file.close();
+    
   }
 
   void save_data(String payload) {
